@@ -5,7 +5,7 @@ Esse repositorio representa a API Secundária do MVP.
 
 # Movies Provider Service
 
-Serviço de microsserviços baseado em Scala que fornece informações de filmes através de APIs REST e GraphQL, com cache e integração com API externa.
+Serviço de microsserviços baseado em Scala que fornece informações de filmes através de APIs REST e GraphQL, com integração com API externa.
 
 ## Visão Geral da Arquitetura
 
@@ -21,13 +21,13 @@ A aplicação segue uma arquitetura em camadas com clara separação de responsa
                      │
             ┌────────▼────────┐
             │  Serviço de     │
-            │  Cache Filmes   │
+            │  Filmes         │
             └────────┬────────┘
                      │
           ┌──────────┼──────────┐
           │          │          │
     ┌─────▼─────┐   │   ┌──────▼──────┐
-    │ Cache H2  │   │   │ Cliente OMDb│
+    │ H2        │   │   │ Cliente OMDb│
     │ Database  │   │   │ API Externa │
     └───────────┘   │   └─────────────┘
                     │
@@ -41,7 +41,7 @@ A aplicação segue uma arquitetura em camadas com clara separação de responsa
 
 ### 🎬 **Busca de Filmes**
 - Busca filmes por título na API OMDb
-- Cache automático no banco H2 para melhor performance
+- Armazenamento no banco H2 para consultas futuras
 - Informações incluem: título, ano, sinopse, ID IMDb e gênero
 
 ### 🤖 **Sistema de Recomendação Inteligente**
@@ -75,7 +75,7 @@ Main extends App
 Database.init()
 ```
 - Cria conexão com banco H2 em memória
-- Configura tabelas: `movies` (cache) e `user_preferences`
+- Configura tabelas: `movies` (armazenamento) e `user_preferences`
 - Usa ScalikeJDBC para operações de banco
 
 ### 3. Inicialização dos Serviços
@@ -110,7 +110,7 @@ case class UserPreference(id: Long, userId: String, movieId: String, rating: Int
 - Pool de conexões via ScalikeJDBC
 
 **Operações Principais:**
-- `getMovieByTitle(title)` - Recupera filmes do cache
+- `getMovieByTitle(title)` - Recupera filmes armazenados
 - `saveMovie(movie)` - Armazena filmes usando `MERGE INTO ... KEY(title)`
 - `addPreference()` / `getUserPreferences()` - Gerencia preferências
 - `getUserPreferredGenres()` - Identifica gêneros favoritos do usuário
@@ -124,7 +124,7 @@ user_preferences: id, user_id, movie_id, rating
 ### Integração Externa
 
 #### OMDbClient.scala
-**Propósito:** Busca dados de filmes da API OMDb quando não estão no cache
+**Propósito:** Busca dados de filmes da API OMDb quando não estão armazenados
 
 **Fluxo:**
 1. Constrói requisição HTTP para `http://www.omdbapi.com/`
@@ -137,17 +137,17 @@ user_preferences: id, user_id, movie_id, rating
 
 ### Lógica de Negócio
 
-#### MovieCacheService.scala
-**Estratégia Cache-First:**
+#### MovieApiService.scala
+**Estratégia Database-First:**
 ```scala
 def getMovie(title: String): Future[Option[Movie]]
 ```
 
 **Fluxo:**
-1. Verifica cache local H2 via `Database.getMovieByTitle()`
-2. Se encontrado → retorna filme do cache
+1. Verifica banco H2 via `Database.getMovieByTitle()`
+2. Se encontrado → retorna filme armazenado
 3. Se não encontrado → chama `OMDbClient.getMovie()`
-4. Se API externa retorna dados → salva no cache e retorna
+4. Se API externa retorna dados → salva no banco e retorna
 5. Se nenhum dado encontrado → retorna `None`
 
 #### MovieSuggestionService.scala
@@ -218,13 +218,13 @@ GET /movie/Inception
     ↓
 MovieService.getMovie()
     ↓
-MovieCacheService.getMovie()
+MovieApiService.getMovie()
     ↓
-Database.getMovieByTitle() → Cache Hit/Miss
+Database.getMovieByTitle() → Database Hit/Miss
     ↓ (se miss)
 OMDbClient.getMovie() → API Externa
     ↓
-Database.saveMovie() → Atualização Cache
+Database.saveMovie() → Atualização Database
     ↓
 Retorna MovieResponse
 ```
@@ -240,7 +240,7 @@ Sangria Query Parser
     ↓
 MovieResolver.getMovie()
     ↓
-MovieCacheService.getMovie() → (mesmo fluxo REST)
+MovieApiService.getMovie() → (mesmo fluxo REST)
     ↓
 Retorna Resposta JSON
 ```
@@ -344,7 +344,7 @@ curl "http://localhost:9090/movie/suggestion?userId=user123"
 ## Tratamento de Erros
 
 - Falhas de conexão com banco → Falha na inicialização do serviço
-- Falhas da API externa → Retorna dados do cache ou "Filme não encontrado"
+- Falhas da API externa → Retorna dados armazenados ou "Filme não encontrado"
 - Consultas GraphQL inválidas → Retorna resposta de erro com detalhes
 - Conflitos de porta → Aplicação falha ao iniciar com mensagem de erro clara
 

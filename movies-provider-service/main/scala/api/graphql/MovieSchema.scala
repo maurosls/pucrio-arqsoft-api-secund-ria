@@ -3,7 +3,7 @@ package api.graphql
 import sangria.schema._
 import sangria.macros.derive._
 import domain.Movie
-import service.{MovieCacheService, MovieSuggestionService}
+import service.{MovieApiService, MovieSuggestionService}
 import scala.concurrent.{ExecutionContext, Future}
 
 object MovieSchema {
@@ -33,7 +33,7 @@ object MovieSchema {
 
 class MovieResolver(implicit ec: ExecutionContext) {
   def getMovie(title: String): Future[Option[Movie]] = {
-    MovieCacheService.getMovie(title)
+    MovieApiService.getMovie(title)
   }
   
   def getSuggestion(userId: String): Future[Option[Movie]] = {

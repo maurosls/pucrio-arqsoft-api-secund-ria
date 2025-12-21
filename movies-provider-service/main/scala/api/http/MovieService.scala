@@ -9,14 +9,14 @@ import io.circe.generic.auto._
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import domain.{MovieResponse, UserPreference}
 import database.Database
-import service.{MovieCacheService, MovieSuggestionService}
+import service.{MovieApiService, MovieSuggestionService}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.io.StdIn
 
 object MovieService {
 
   def getMovie(title: String)(implicit ec: ExecutionContext): Future[MovieResponse] = {
-    MovieCacheService.getMovie(title).map {
+    MovieApiService.getMovie(title).map {
       case Some(movie) => MovieResponse(movie.title, movie.year, movie.plot, movie.imdbID, movie.genre)
       case None => MovieResponse("", "", "Movie not found", "", "")
     }

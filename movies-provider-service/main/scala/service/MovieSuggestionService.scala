@@ -38,7 +38,7 @@ object MovieSuggestionService {
         
         if (movies.nonEmpty) {
           val randomTitle = movies(Random.nextInt(movies.length))
-          MovieCacheService.getMovie(randomTitle).flatMap {
+          MovieApiService.getMovie(randomTitle).flatMap {
             case Some(movie) if !userRatedMovies.contains(movie.imdbID) => 
               Future.successful(Some(movie))
             case _ => 
@@ -62,7 +62,7 @@ object MovieSuggestionService {
         Future.successful(None)
       } else {
         val title = titles.head
-        MovieCacheService.getMovie(title).flatMap {
+        MovieApiService.getMovie(title).flatMap {
           case Some(movie) if !userRatedMovies.contains(movie.imdbID) => 
             Future.successful(Some(movie))
           case _ => 
